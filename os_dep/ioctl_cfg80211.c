@@ -2133,6 +2133,20 @@ static int cfg80211_rtw_scan(struct wiphy *wiphy
 		pbuddy_adapter = padapter->pbuddy_adapter;
 		pbuddy_mlmepriv = &(pbuddy_adapter->mlmepriv);
 	}
+
+	// check if buddy adapter is configured as client,
+	// if so, deny scan immediately (rtl8723bu can't act as two clients)
+	DBG_871X("scan request for %s\n", ndev->name);
+	DBG_871X("this wlan state %08x\n", pmlmepriv->fw_state);
+	if (pbuddy_mlmepriv) {
+		DBG_871X("buddy wlan state %08x\n", pbuddy_mlmepriv->fw_state);
+	}
+
+	if (pbuddy_mlmepriv && check_fwstate(pbuddy_mlmepriv, WIFI_ASOC_STATE) == _TRUE) {
+		DBG_871X("scan on %s is cancelled, another interface is the client here\n", ndev->name);
+		ret = -EBUSY;
+		goto exit;
+	}
 #endif //CONFIG_CONCURRENT_MODE
 
 	SPIN_LOCK_BH(pwdev_priv->scan_req_lock, &irqL);
