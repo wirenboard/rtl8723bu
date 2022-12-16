@@ -3123,7 +3123,14 @@ static int cfg80211_rtw_disconnect(struct wiphy *wiphy, struct net_device *ndev,
 
 		DBG_871X("%s...call rtw_indicate_disconnect\n", __FUNCTION__);
 
+		// Temporarily enable disconnect indication here
+		// in order to properly notify cfg80211 about actual disconnection
+		// and clean up old connection settings.
+		// Without this fix NetworkManager fails to connect to a new access point
+		// after disconnection from another.
+		padapter->mlmepriv.not_indic_disco = _FALSE;
 		rtw_indicate_disconnect(padapter);
+		padapter->mlmepriv.not_indic_disco = _TRUE;
 
 		rtw_free_assoc_resources(padapter, 1);
 		rtw_pwr_wakeup(padapter);
