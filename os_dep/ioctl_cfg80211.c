@@ -2931,6 +2931,14 @@ static int cfg80211_rtw_connect(struct wiphy *wiphy, struct net_device *ndev,
 		ret = -EINVAL;
 		goto exit;
 	}
+
+	if (check_buddy_fwstate(padapter, WIFI_STATION_STATE) == _TRUE &&
+			check_buddy_fwstate(padapter, WIFI_ASOC_STATE) == _TRUE) {
+		DBG_871X("%s, but buddy_intf is connected to AP\n", __FUNCTION__);
+		ret = -EINVAL;
+		goto exit;
+	}
+
 	if (check_buddy_fwstate(padapter, _FW_UNDER_SURVEY) == _TRUE) {
 		rtw_scan_abort(padapter->pbuddy_adapter);
 	}
@@ -3965,6 +3973,15 @@ static int cfg80211_rtw_start_ap(struct wiphy *wiphy, struct net_device *ndev,
 	int ret = 0;
 	_adapter *adapter = (_adapter *)rtw_netdev_priv(ndev);
 
+#ifdef CONFIG_CONCURRENT_MODE
+	if (check_buddy_fwstate(adapter, WIFI_AP_STATE) == _TRUE &&
+			check_buddy_fwstate(adapter, WIFI_ASOC_STATE) == _TRUE) {
+		DBG_871X("%s, but buddy_intf is configured as AP\n", __FUNCTION__);
+		ret = -EINVAL;
+		goto exit;
+	}
+#endif
+
 	DBG_871X(FUNC_NDEV_FMT" hidden_ssid:%d, auth_type:%d\n", FUNC_NDEV_ARG(ndev),
 		settings->hidden_ssid, settings->auth_type);
 
@@ -3983,6 +4000,7 @@ static int cfg80211_rtw_start_ap(struct wiphy *wiphy, struct net_device *ndev,
 		pbss_network_ext->Ssid.SsidLength = settings->ssid_len;
 	}
 
+exit:
 	return ret;
 }
 
