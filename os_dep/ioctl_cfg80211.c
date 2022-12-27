@@ -2143,7 +2143,8 @@ static int cfg80211_rtw_scan(struct wiphy *wiphy
 	}
 
 	if (pbuddy_mlmepriv && check_fwstate(pbuddy_mlmepriv, WIFI_ASOC_STATE) == _TRUE &&
-			check_fwstate(pbuddy_mlmepriv, WIFI_STATION_STATE) == _TRUE) {
+			check_fwstate(pbuddy_mlmepriv, WIFI_STATION_STATE) == _TRUE &&
+			check_fwstate(pmlmepriv, WIFI_ASOC_STATE) != _TRUE) {
 		DBG_871X("scan on %s is cancelled, another interface is the client here\n", ndev->name);
 		ret = -EBUSY;
 		goto exit;
