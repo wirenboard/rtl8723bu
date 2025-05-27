@@ -17,6 +17,7 @@
  *
  *
  ******************************************************************************/
+#include <linux/timer.h>
 #ifndef __OSDEP_LINUX_SERVICE_H_
 #define __OSDEP_LINUX_SERVICE_H_
 
@@ -130,7 +131,13 @@
 	typedef int		thread_return;
 	typedef void*	thread_context;
 
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6,14,00))
+	#define thread_exit() kthread_complete_and_exit(NULL, 0)
+#else
 	#define thread_exit() complete_and_exit(NULL, 0)
+#endif
+
 
 	typedef void timer_hdl_return;
 	typedef void* timer_hdl_context;
@@ -256,8 +263,7 @@ __inline static void _set_timer(_timer *ptimer,u32 delay_time)
 
 __inline static void _cancel_timer(_timer *ptimer,u8 *bcancelled)
 {
-	del_timer_sync(ptimer);
-	*bcancelled=  _TRUE;//TRUE ==1; FALSE==0
+	*bcancelled = timer_delete_sync(ptimer) == 1 ? 1 : 0;
 }
 
 

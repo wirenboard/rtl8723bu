@@ -1012,7 +1012,9 @@ u64 rtw_division64(u64 x, u64 y)
 
 inline u32 rtw_random32(void)
 {
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
+	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,11,0))
+	return get_random_u32();
+	#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
 	return prandom_u32();
 	#elif (LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,18))
 	u32 random_int;

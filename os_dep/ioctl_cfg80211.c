@@ -733,9 +733,6 @@ check_bss:
 		struct ieee80211_channel *notify_channel;
 		u32 freq;
 		u16 channel = cur_network->network.Configuration.DSConfig;
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0))
-		struct cfg80211_roam_info roam_info = {};
-#endif
 
 		if (channel <= RTW_CH_MAX_2G_CHANNEL)
 			freq = rtw_ieee80211_channel_to_frequency(channel, IEEE80211_BAND_2GHZ);
@@ -747,16 +744,16 @@ check_bss:
 
 		DBG_871X(FUNC_ADPT_FMT" call cfg80211_roamed\n", FUNC_ADPT_ARG(padapter));
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4,12,0))
-		roam_info.channel = notify_channel;
-		roam_info.bssid = cur_network->network.MacAddress;
-		roam_info.req_ie =
-			pmlmepriv->assoc_req+sizeof(struct rtw_ieee80211_hdr_3addr)+2;
-		roam_info.req_ie_len =
-			pmlmepriv->assoc_req_len-sizeof(struct rtw_ieee80211_hdr_3addr)-2;
-		roam_info.resp_ie =
-			pmlmepriv->assoc_rsp+sizeof(struct rtw_ieee80211_hdr_3addr)+6;
-		roam_info.resp_ie_len =
-			pmlmepriv->assoc_rsp_len-sizeof(struct rtw_ieee80211_hdr_3addr)-6;
+		struct cfg80211_roam_info roam_info = {
+			.links[0] = {
+				.bssid = cur_network->network.MacAddress,
+				.channel = notify_channel,
+			},
+			.req_ie = pmlmepriv->assoc_req+sizeof(struct rtw_ieee80211_hdr_3addr)+2,
+			.req_ie_len = pmlmepriv->assoc_req_len-sizeof(struct rtw_ieee80211_hdr_3addr)-2,
+			.resp_ie = pmlmepriv->assoc_rsp+sizeof(struct rtw_ieee80211_hdr_3addr)+6,
+			.resp_ie_len = pmlmepriv->assoc_rsp_len-sizeof(struct rtw_ieee80211_hdr_3addr)-6,
+		};
 		cfg80211_roamed(padapter->pnetdev, &roam_info, GFP_ATOMIC);
 #else
 		cfg80211_roamed(padapter->pnetdev
@@ -1424,11 +1421,14 @@ exit:
 }
 
 static int cfg80211_rtw_add_key(struct wiphy *wiphy, struct net_device *ndev,
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37)) || defined(COMPAT_KERNEL_RELEASE)
-				u8 key_index, bool pairwise, const u8 *mac_addr,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+				int link_id, u8 key_index, bool pairwise,
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37)) || defined(COMPAT_KERNEL_RELEASE)
+				u8 key_index, bool pairwise,
 #else	// (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
-				u8 key_index, const u8 *mac_addr,
-#endif	// (LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,37))
+				u8 key_index,
+#endif
+				const u8 *mac_addr,
 				struct key_params *params)
 {
 	char *alg_name;
@@ -3183,6 +3183,9 @@ static int cfg80211_rtw_set_txpower(struct wiphy *wiphy,
 static int cfg80211_rtw_get_txpower(struct wiphy *wiphy,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3,8,0))
 	struct wireless_dev *wdev,
+#endif
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 5, 0))
+	unsigned int link_id,
 #endif
 	int *dbm)
 {
@@ -5803,9 +5806,6 @@ void rtw_cfg80211_init_wiphy(_adapter *padapter)
 			rtw_cfg80211_init_ht_capab(&bands->ht_cap, IEEE80211_BAND_5GHZ, rf_type);
 	}
 
-	/* init regulary domain */
-	rtw_regd_init(padapter, rtw_reg_notifier);
-
 	/* copy mac_addr to wiphy */
 	_rtw_memcpy(wiphy->perm_addr, padapter->eeprompriv.mac_addr, ETH_ALEN);
 
@@ -5925,10 +5925,17 @@ static void rtw_cfg80211_preinit_wiphy(_adapter *padapter, struct wiphy *wiphy)
 
 static struct cfg80211_ops rtw_cfg80211_ops = {
 	.change_virtual_intf = cfg80211_rtw_change_iface,
-	.add_key = cfg80211_rtw_add_key,
-	.get_key = cfg80211_rtw_get_key,
-	.del_key = cfg80211_rtw_del_key,
-	.set_default_key = cfg80211_rtw_set_default_key,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+    .add_key = (void *)cfg80211_rtw_add_key,
+    .del_key = (void *)cfg80211_rtw_del_key,
+    .get_key = (void *)cfg80211_rtw_get_key,
+    .set_default_key = (void *)cfg80211_rtw_set_default_key,
+#else
+    .add_key = cfg80211_rtw_add_key,
+    .del_key = cfg80211_rtw_del_key,
+    .get_key = cfg80211_rtw_get_key,
+    .set_default_key = cfg80211_rtw_set_default_key,
+#endif
 	.get_station = cfg80211_rtw_get_station,
 	.scan = cfg80211_rtw_scan,
 	.set_wiphy_params = cfg80211_rtw_set_wiphy_params,
@@ -5937,7 +5944,11 @@ static struct cfg80211_ops rtw_cfg80211_ops = {
 	.join_ibss = cfg80211_rtw_join_ibss,
 	.leave_ibss = cfg80211_rtw_leave_ibss,
 	.set_tx_power = cfg80211_rtw_set_txpower,
-	.get_tx_power = cfg80211_rtw_get_txpower,
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 19, 0)
+    .get_tx_power = (void *)cfg80211_rtw_get_txpower,
+#else
+    .get_tx_power = cfg80211_rtw_get_txpower,
+#endif
 	.set_power_mgmt = cfg80211_rtw_set_power_mgmt,
 	.set_pmksa = cfg80211_rtw_set_pmksa,
 	.del_pmksa = cfg80211_rtw_del_pmksa,
@@ -5953,8 +5964,13 @@ static struct cfg80211_ops rtw_cfg80211_ops = {
 	.del_beacon = cfg80211_rtw_del_beacon,
 	#else
 	.start_ap = cfg80211_rtw_start_ap,
-	.change_beacon = cfg80211_rtw_change_beacon,
-	.stop_ap = cfg80211_rtw_stop_ap,
+	#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+    .change_beacon = (int (*)(struct wiphy *, struct net_device *, struct cfg80211_ap_update *))cfg80211_rtw_change_beacon,
+    .stop_ap = (int (*)(struct wiphy *, struct net_device *, unsigned int))cfg80211_rtw_stop_ap,
+	#else
+    .change_beacon = cfg80211_rtw_change_beacon,
+    .stop_ap = cfg80211_rtw_stop_ap,
+	#endif
 	#endif
 
 	.add_station = cfg80211_rtw_add_station,

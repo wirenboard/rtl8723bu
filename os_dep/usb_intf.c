@@ -39,8 +39,15 @@ static int rtw_resume(struct usb_interface *intf);
 static int rtw_drv_init(struct usb_interface *pusb_intf,const struct usb_device_id *pdid);
 static void rtw_dev_remove(struct usb_interface *pusb_intf);
 
-static void rtw_dev_shutdown(struct device *dev)
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0)
+void rtw_dev_shutdown(struct usb_interface *intf)
 {
+    struct device *dev = &intf->dev;
+#else
+void rtw_dev_shutdown(struct device *dev)
+{
+#endif
 	struct usb_interface *usb_intf = container_of(dev, struct usb_interface, dev);
 	struct dvobj_priv *dvobj = NULL;
 	_adapter *adapter = NULL;
@@ -171,11 +178,13 @@ static struct rtw_usb_drv usb_drv = {
 	.usbdrv.supports_autosuspend = 1,
 	#endif
 
-	#if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 19))
-	.usbdrv.drvwrap.driver.shutdown = rtw_dev_shutdown,
-	#else
-	.usbdrv.driver.shutdown = rtw_dev_shutdown,
-	#endif
+	#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 19)
+    .usbdrv.driver.shutdown = rtw_dev_shutdown,
+    #elif LINUX_VERSION_CODE < KERNEL_VERSION(5, 0, 0)
+    .usbdrv.drvwrap.driver.shutdown = rtw_dev_shutdown,
+    #else
+	.usbdrv.shutdown = (void (*)(struct usb_interface *))rtw_dev_shutdown,
+    #endif
 };
 
 static inline int RT_usb_endpoint_dir_in(const struct usb_endpoint_descriptor *epd)

@@ -17,6 +17,7 @@
  *
  *
  ******************************************************************************/
+#include <linux/timer.h>
 #ifndef __OSDEP_SERVICE_H_
 #define __OSDEP_SERVICE_H_
 
@@ -258,7 +259,7 @@ void rtw_init_timer(_timer *ptimer, void *padapter, void *pfunc);
 
 __inline static unsigned char _cancel_timer_ex(_timer *ptimer)
 {
-	return del_timer_sync(ptimer);
+    return timer_delete_sync(ptimer);
 }
 
 static __inline void thread_enter(char *name)

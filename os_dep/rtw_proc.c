@@ -36,9 +36,16 @@ inline struct proc_dir_entry *get_rtw_drv_proc(void)
 #define file_inode(file) ((file)->f_dentry->d_inode)
 #endif
 
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0))
+#if LINUX_VERSION_CODE < KERNEL_VERSION(3,10,0)
 #define PDE_DATA(inode) PDE((inode))->data
 #define proc_get_parent_data(inode) PDE((inode))->parent->data
+#elif LINUX_VERSION_CODE < KERNEL_VERSION(5,17,0) /* 3.10-5.16 */
+#include <linux/proc_fs.h>
+#define proc_get_parent_data(inode) PDE_DATA((inode)->i_private)
+#else /* 5.17+ */
+#include <linux/proc_fs.h>
+#define PDE_DATA(inode) pde_data(inode)
+#define proc_get_parent_data(inode) pde_data(file_inode(file)->i_private)
 #endif
 
 #if(LINUX_VERSION_CODE < KERNEL_VERSION(2,6,24))
