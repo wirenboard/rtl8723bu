@@ -365,3 +365,4 @@ clean:
 	rm -fr .tmp_versions .cache.mk
 endif
 
+ccflags-y += -I$(src)/include -I$(src)/platform
