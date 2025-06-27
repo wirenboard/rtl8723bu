@@ -17,6 +17,7 @@
  *
  *
  ******************************************************************************/
+#include <linux/timer.h>
 #ifndef __OSDEP_LINUX_SERVICE_H_
 #define __OSDEP_LINUX_SERVICE_H_
 
@@ -262,8 +263,7 @@ __inline static void _set_timer(_timer *ptimer,u32 delay_time)
 
 __inline static void _cancel_timer(_timer *ptimer,u8 *bcancelled)
 {
-	del_timer_sync(ptimer);
-	*bcancelled=  _TRUE;//TRUE ==1; FALSE==0
+	*bcancelled = timer_delete_sync(ptimer) == 1 ? 1 : 0;
 }
 
 
