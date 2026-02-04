@@ -25,6 +25,10 @@
 	#include <linux/spinlock.h>
 	#include <linux/compiler.h>
 	#include <linux/kernel.h>
+#ifndef from_timer
+#define from_timer(var, callback_timer, timer_fieldname) \
+	container_of(callback_timer, typeof(*var), timer_fieldname)
+#endif
 	#include <linux/errno.h>
 	#include <linux/init.h>
 	#include <linux/slab.h>
